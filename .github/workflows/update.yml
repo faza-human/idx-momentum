@@ -25,6 +25,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main          # selalu versi terbaru, bukan SHA saat dipicu
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -45,7 +47,12 @@ jobs:
           git add data
           if git diff --cached --quiet; then echo "Tidak ada perubahan"; exit 0; fi
           git commit -m "data: update EOD $(TZ=Asia/Jakarta date +'%Y-%m-%d %H:%M') WIB"
-          for i in 1 2 3; do git pull --rebase -q && git push && break; sleep 10; done
+          for i in 1 2 3; do
+            if git pull --rebase -q && git push; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep 10
+          done
+          echo "::error::Push gagal 3x"; exit 1
       - name: Status akhir
         if: steps.upd.outputs.rc != '0'
         run: |

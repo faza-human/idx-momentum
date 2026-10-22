@@ -174,7 +174,8 @@ def run(root, n_days=14, final=False, today=None, sources=("idx", "imq21", "yaho
                     if str(d) in st["holidays"]:
                         st["holidays"].remove(str(d))
                         hol.discard(d)
-                    st["days"][str(d)] = {**info, "fetched": now.isoformat(timespec="minutes")}
+                    st["days"][str(d)] = {**info, "fetched": now.isoformat(timespec="minutes"),
+                                          "skipped_sources": tried}
                     run_log["written"].append(f"{d} {src}")
                     log.info("%s OK dari %s: %s", d, src, info)
                     break
