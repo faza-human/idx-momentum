@@ -1,0 +1,45 @@
+name: Backfill histori (Yahoo)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "Tanggal mulai (YYYY-MM-DD)"
+        default: "2022-08-24"
+      end:
+        description: "Tanggal akhir (kosong = hari ini)"
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-write
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Backfill
+        run: |
+          END=""
+          if [ -n "${{ inputs.end }}" ]; then END="--end ${{ inputs.end }}"; fi
+          python fetch/backfill.py --data data --start "${{ inputs.start }}" $END
+      - name: Update hari terakhir
+        run: python fetch/update.py --data data || true
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "Tidak ada perubahan"; exit 0; fi
+          git commit -m "data: backfill Yahoo ${{ inputs.start }}..${{ inputs.end }}"
+          for i in 1 2 3; do git pull --rebase -q && git push && break; sleep 10; done

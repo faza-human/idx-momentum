@@ -1,0 +1,53 @@
+name: Update data EOD
+
+on:
+  schedule:
+    - cron: "20 10 * * 1-5"   # 17:20 WIB
+    - cron: "20 11 * * 1-5"   # 18:20 WIB
+    - cron: "50 15 * * 1-5"   # 22:50 WIB  (run terakhir: gagal bila hari bursa terakhir masih kosong)
+  workflow_dispatch:
+    inputs:
+      final:
+        description: "Anggap run terakhir (gagal bila data terbaru belum ada)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-write
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Ambil & validasi data
+        id: upd
+        run: |
+          FINAL=""
+          if [ "${{ github.event.schedule }}" = "50 15 * * 1-5" ] || [ "${{ inputs.final }}" = "true" ]; then FINAL="--final"; fi
+          set +e
+          python fetch/update.py --data data $FINAL
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "Tidak ada perubahan"; exit 0; fi
+          git commit -m "data: update EOD $(TZ=Asia/Jakarta date +'%Y-%m-%d %H:%M') WIB"
+          for i in 1 2 3; do git pull --rebase -q && git push && break; sleep 10; done
+      - name: Status akhir
+        if: steps.upd.outputs.rc != '0'
+        run: |
+          echo "::error::Data hari bursa terakhir belum tersedia. Lihat data/status.json (runs[-1].missing)."
+          exit 1
