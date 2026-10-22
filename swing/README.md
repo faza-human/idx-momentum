@@ -34,29 +34,32 @@ TP1 = 2R jual 50%, SL sisa ke BEP. Sisa keluar open besok bila close < MA10.
 Time stop 10 hari bila belum TP1 dan < +1R. Fee IPOT 0,19%/0,29%, slippage 1 tick.
 Parameter ditetapkan di muka, tidak dioptimasi.
 
-## Hasil backtest (data diperbaiki, sinyal Jul 2023–Okt 2026)
+## Hasil backtest (data repo ini setelah diperbaiki & dilengkapi, sinyal Jul 2023–Okt 2026)
 | Strategi | Periode | Trade | Win | Rata-rata R | t | PF | Return portofolio | Max DD |
 |---|---|---|---|---|---|---|---|---|
-| A breakout | IS | 28 | 28,6% | −0,36 | −1,3 | 0,58 | −4,5% | −8,0% |
-| A breakout | OOS | 20 | 40,0% | +0,03 | 0,1 | 1,05 | +0,2% | −8,5% |
-| B pullback | IS | 116 | 30,2% | −0,37 | −2,9 | 0,52 | −6,9% | −14,7% |
-| B pullback | OOS | 85 | 50,6% | +0,72 | 2,8 | 2,24 | +38,6% | −9,6% |
-| B tanpa regime | ALL | 331 | 35,0% | −0,14 | −1,4 | 0,82 | −12,7% | −33,2% |
-| B slippage 2 tick | OOS | 85 | 49,4% | +0,60 | 2,3 | 1,91 | +30,5% | −10,5% |
-| Baseline acak (uptrend+RS, exit sama) | IS | 1.099 | 31,0% | −0,36 | −8,1 | 0,56 | – | – |
-| Baseline acak | OOS | 1.579 | 42,6% | +0,38 | 5,5 | 1,55 | – | – |
+| A breakout | IS | 48 | 29,2% | −0,28 | −1,1 | 0,68 | −11,8% | −14,2% |
+| A breakout | OOS | 23 | 43,5% | +0,12 | 0,3 | 1,19 | +6,6% | −7,1% |
+| B pullback | IS | 163 | 27,0% | −0,35 | −2,6 | 0,58 | −35,0% | −38,5% |
+| B pullback | OOS | 104 | 49,0% | +0,64 | 2,6 | 2,06 | +38,2% | −8,6% |
+| B pullback | ALL | 267 | 35,6% | +0,03 | 0,2 | 1,04 | −11,1% | −38,5% |
+| B tanpa regime | ALL | 516 | 34,3% | −0,17 | −2,1 | 0,78 | −25,2% | −49,8% |
+| B slippage 2 tick | OOS | 104 | 48,1% | +0,51 | 2,1 | 1,75 | +29,3% | −10,5% |
+| Baseline acak (uptrend+RS, exit sama) | IS | 1.955 | 33,2% | −0,18 | −4,3 | – | – | – |
+| Baseline acak | OOS | 1.723 | 43,0% | +0,37 | 5,7 | – | – | – |
 
+Per tahun (B): 2023 −0,20R (51) · 2024 −0,54R (96) · 2025 +0,80R (85) · 2026 +0,07R (35).
 IS = sinyal s/d 30 Jun 2025, OOS = setelahnya. Portofolio dimulai Rp30 jt per periode.
+Versi sebelumnya (data lama, 2024 hanya saham A–E) menunjukkan IS −0,37R pada 116 trade; data lengkap
+memperburuk 2024.
 
 ## Kesimpulan jujur
-- Setup A gagal: negatif di IS, nol di OOS. Tidak dipakai.
-- Setup B: rugi di IS, untung di OOS. Tanda tergantung kondisi pasar, bukan edge yang stabil.
-- Baseline acak dengan exit yang sama punya pola IS/OOS serupa. Selisih B vs baseline:
-  ≈0 di IS, +0,34R di OOS. Sebagian besar hasil = momentum pasar 2025–2026.
-- Filter regime penting: tanpa itu B negatif.
-- Trailing MA10 lebih baik dari MA20. Hasil OOS bertahan dengan slippage 2 tick.
-- IS 2024 tidak bisa diandalkan (universe kecil akibat data parsial).
-- Status: PAPER TRADE. Naik ke uang asli hanya bila 30+ trade paper mendekati hasil OOS.
+- Sepanjang 3,2 tahun Setup B ≈ impas (+0,03R/trade) dengan drawdown −38,5% di 2023–2024.
+  Seluruh keuntungan datang dari 2025.
+- Di periode 1, B lebih buruk dari saham uptrend acak (−0,35R vs −0,18R). Di periode 2 lebih baik
+  (+0,64R vs +0,37R). Keunggulan setup atas acak tidak konsisten.
+- Setup A tidak dipakai. Filter regime wajib (tanpa itu −0,17R).
+- Status: PAPER TRADE. Naik ke uang asli hanya bila 30+ trade paper mendekati hasil OOS
+  dan review bulanan tidak menunjukkan penurunan.
 
 ## Keterbatasan
 - Proxy IHSG, bukan IHSG resmi. Status FCA/papan pemantauan dan aksi korporasi tidak difilter.
@@ -76,18 +79,18 @@ Pagar anti-overfitting:
 - Fitur sinyal (RS, kedalaman koreksi, ATR%, volume, jarak MA50, kemiringan MA50, jarak SL, kenaikan hari sinyal,
   likuiditas) diuji per tersil di kedua periode dan dua set data (Setup B dan uptrend acak).
 
-Hasil pertama (data s/d 20 Okt 2026):
+Hasil (data diperbaiki, s/d 22 Okt 2026):
 | Cara memilih config (uji Jan 2025–Okt 2026) | Trade | Win | Rata R |
 |---|---|---|---|
-| Config tetap (default) | 99 | 48,5% | +0,65 |
-| Adaptif, semua data lalu | 46 | 45,7% | +0,36 |
-| Adaptif, 4 kuartal terakhir | 46 | 45,7% | +0,43 |
-| Oracle (lihat masa depan) | 52 | 51,9% | +0,79 |
+| Config tetap (default) | 120 | 47,5% | +0,59 |
+| Adaptif, semua data lalu | 120 | 44,2% | +0,67 |
+| Adaptif, 4 kuartal terakhir | 89 | 42,7% | +0,35 |
+| Oracle (lihat masa depan) | 70 | 48,6% | +0,68 |
 
-- Korelasi peringkat config periode 1 vs 2 = +0,06 → tuning parameter = mengejar noise. Config tetap.
-- Semua 24 config negatif di periode 1 dan positif di periode 2 → kondisi pasar dominan, bukan parameter.
-- Regime MA50 lebih baik dari MA20 di periode 2 (12 config teratas semuanya MA50).
-- Satu-satunya ciri konsisten: kemiringan MA50 (hanya di set uptrend acak). Masuk daftar uji, belum dipakai.
+- Adaptif (semua data) unggul +0,08R, di bawah syarat +0,10R → config tetap. Pilihannya konsisten
+  TP1 3R / trailing MA10 / regime MA50; dipantau tiap bulan.
+- Korelasi peringkat config periode 1 vs 2 = +0,40 (data lama: +0,06).
+- Regime MA50 lebih baik dari MA20.
 
 ## Watchlist pra-setup (email harian)
 Saham lolos filter dasar (likuid, RS 30% teratas, Close > MA50 > MA200, MA50 naik) yang sedang koreksi

@@ -142,7 +142,9 @@ def build(data_dir, out_dir):
     allt = run_trades(m, np.flatnonzero(sig.values))
     st = {p: trade_stats(t) for p, t in (("IS", allt[allt["sig_date"] <= IS_END]),
                                          ("OOS", allt[allt["sig_date"] > IS_END]))}
-    today = pd.Timestamp.now(tz="Asia/Jakarta").tz_localize(None).normalize()
+    now = pd.Timestamp.now(tz="Asia/Jakarta").tz_localize(None)
+    # data hari ini baru diharapkan setelah 17:00 WIB
+    today = now.normalize() - pd.Timedelta(days=0 if now.hour >= 17 else 1)
     # libur bursa & sumber data dari data/status.json (repo idx-momentum), bila ada
     status_p = os.path.join(os.path.dirname(os.path.abspath(data_dir)), "status.json")
     holidays, source = [], "?"
