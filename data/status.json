@@ -1,0 +1,136 @@
+{
+ "days": {
+  "2026-10-05": {
+   "active": 818,
+   "fail": [],
+   "fetched": "2026-10-23T03:27+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 0.9988,
+   "rows": 949,
+   "source": "imq21",
+   "yahoo_match": 0.9964
+  },
+  "2026-10-06": {
+   "active": 818,
+   "fail": [],
+   "fetched": "2026-10-23T03:27+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 1.0,
+   "rows": 949,
+   "source": "imq21",
+   "yahoo_match": 0.9964
+  },
+  "2026-10-07": {
+   "active": 819,
+   "fail": [],
+   "fetched": "2026-10-23T03:27+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 0.9988,
+   "rows": 949,
+   "source": "imq21",
+   "yahoo_match": 0.9976
+  },
+  "2026-10-08": {
+   "active": 813,
+   "fail": [],
+   "fetched": "2026-10-23T03:27+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 1.0,
+   "rows": 949,
+   "source": "imq21",
+   "yahoo_match": 0.9976
+  },
+  "2026-10-09": {
+   "active": 817,
+   "fail": [],
+   "fetched": "2026-10-23T03:27+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 0.9988,
+   "rows": 949,
+   "source": "imq21",
+   "yahoo_match": 0.9988
+  },
+  "2026-10-12": {
+   "active": 819,
+   "fail": [],
+   "fetched": "2026-10-23T03:27+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 1.0,
+   "rows": 949,
+   "source": "imq21",
+   "yahoo_match": 0.9988
+  },
+  "2026-10-13": {
+   "active": 820,
+   "fail": [],
+   "fetched": "2026-10-23T03:27+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 1.0,
+   "rows": 949,
+   "source": "imq21",
+   "yahoo_match": 0.9988
+  },
+  "2026-10-19": {
+   "active": 825,
+   "fail": [],
+   "fetched": "2026-10-23T03:27+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 1.0,
+   "rows": 949,
+   "source": "imq21",
+   "yahoo_match": 1.0
+  },
+  "2026-10-21": {
+   "active": 819,
+   "fail": [],
+   "fetched": "2026-10-23T03:27+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 1.0,
+   "rows": 949,
+   "source": "imq21",
+   "yahoo_match": 1.0
+  },
+  "2026-10-22": {
+   "active": 820,
+   "fail": [],
+   "fetched": "2026-10-23T03:27+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 1.0,
+   "rows": 949,
+   "source": "imq21",
+   "yahoo_match": 1.0
+  }
+ },
+ "holidays": [],
+ "runs": [
+  {
+   "at": "2026-10-23T03:27+07:00",
+   "holidays": [],
+   "missing": [],
+   "targets": [
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-08",
+    "2026-10-09",
+    "2026-10-12",
+    "2026-10-13",
+    "2026-10-19",
+    "2026-10-21",
+    "2026-10-22"
+   ],
+   "written": [
+    "2026-10-05 imq21",
+    "2026-10-06 imq21",
+    "2026-10-07 imq21",
+    "2026-10-08 imq21",
+    "2026-10-09 imq21",
+    "2026-10-12 imq21",
+    "2026-10-13 imq21",
+    "2026-10-19 imq21",
+    "2026-10-21 imq21",
+    "2026-10-22 imq21"
+   ]
+  }
+ ]
+}
