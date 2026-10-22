@@ -1,4 +1,5 @@
-"""Continuous learning untuk Setup B (pullback), dengan pagar anti-overfitting.
+"""Continuous learning untuk Setup S (pullback + Stochastic 5,3,3), dengan pagar anti-overfitting.
+Juga menjalankan lab setup (lab.py): kandidat varian yang dinilai lewat uji maju.
 
 Pemakaian: python -I learn.py <data_dir> <out_dir>
 Output   : <out_dir>/learn_report.html, learn_subject.txt, learn_configs.csv,
@@ -26,7 +27,8 @@ import numpy as np
 import pandas as pd
 
 from swing import (CFG, IS_END, Market, add_features, base_filter, load_raw, market_regime,
-                   run_trades, setup_b, trade_stats)
+                   run_trades, setup_s, trade_stats)
+import lab as setup_lab  # noqa: E402
 
 GRID = dict(rs_top=[0.30, 0.20], tp_r=[1.5, 2.0, 3.0], trail_ma=["ma10", "ma20"], regime_ma=[50, 20])
 DEFAULT = dict(rs_top=0.30, tp_r=2.0, trail_ma="ma10", regime_ma=50)
@@ -56,7 +58,7 @@ def run_grid(df, m, regimes):
     for vals in itertools.product(*GRID.values()):
         p = dict(zip(GRID.keys(), vals))
         cfg = {**CFG, **{k: v for k, v in p.items() if k != "regime_ma"}}
-        mask = setup_b(df, cfg) & ready & regimes[p["regime_ma"]]
+        mask = setup_s(df, cfg) & ready & regimes[p["regime_ma"]]
         t = run_trades(m, np.flatnonzero(mask.values), cfg)
         out[key(p)] = (p, t)
     return out
@@ -167,12 +169,12 @@ def main(data_dir, out_dir):
     wf.to_csv(f"{out_dir}/learn_walkforward.csv", index=False)
     picks = picks_exp.merge(picks_roll, on="quarter", suffixes=("_semua", "_4q"))
 
-    # fitur: trade Setup B default + trade acak di universe uptrend (sampel lebih besar)
+    # fitur: trade Setup S default + trade acak di universe uptrend (sampel lebih besar)
     ready = df["ma200"].notna()
     base = base_filter(df) & ready & regimes[50]
     rows = np.random.default_rng(7).choice(np.flatnonzero(base.values), size=min(15000, int(base.sum())), replace=False)
     t_base = run_trades(m, rows, CFG)
-    ft = pd.concat([feature_table(df, t_def, "Setup B"), feature_table(df, t_base, "Uptrend acak")])
+    ft = pd.concat([feature_table(df, t_def, "Setup S"), feature_table(df, t_base, "Uptrend acak")])
     ft.to_csv(f"{out_dir}/learn_features.csv", index=False)
 
     # keputusan
@@ -181,7 +183,13 @@ def main(data_dir, out_dir):
     cons = ft[ft["konsisten"]]
     cons_both = cons.groupby("fitur").filter(lambda g: g["set"].nunique() == 2 and g["arah"].nunique() == 1)
 
-    html, subject = report(last, ct, rho, wf, picks, ft, cons, cons_both, adopt, d_R, grid)
+    # lab setup (regime MA50 seperti produksi)
+    reg50 = market_regime(df, ma=50)
+    df["regime_on"] = regimes[50]
+    lab = setup_lab.evaluate(df, reg50)
+    lab.to_csv(f"{out_dir}/lab.csv", index=False)
+
+    html, subject = report(last, ct, rho, wf, picks, ft, cons, cons_both, adopt, d_R, grid, lab)
     with open(f"{out_dir}/learn_report.html", "w") as f:
         f.write(html)
     with open(f"{out_dir}/learn_subject.txt", "w") as f:
@@ -196,7 +204,7 @@ def main(data_dir, out_dir):
               "OOS_tinggi_R", "konsisten", "arah"]].to_string(index=False))
 
 
-def report(last, ct, rho, wf, picks, ft, cons, cons_both, adopt, d_R, grid):
+def report(last, ct, rho, wf, picks, ft, cons, cons_both, adopt, d_R, grid, lab=None):
     th = "style='background:#1f3a5f;color:#fff;padding:3px 6px;text-align:left'"
     td = "style='padding:2px 6px;border-bottom:1px solid #eee'"
     o = ["<div style='font-family:Arial,sans-serif;font-size:13px;color:#222;max-width:680px'>",
@@ -239,9 +247,16 @@ def report(last, ct, rho, wf, picks, ft, cons, cons_both, adopt, d_R, grid):
         o.append("<p style='color:#666'>Konsisten di satu set saja: "
                  + "; ".join(f"{r['fitur']} ({r['set']}, {r['arah']})" for _, r in cons.iterrows()) + ".</p>")
     o.append("<p style='color:#888;font-size:11px'>Ciri baru tidak langsung dipakai. Ia masuk daftar uji dan baru "
-             "diterapkan bila tetap konsisten di data bulan-bulan berikutnya.</p></div>")
+             "diterapkan bila tetap konsisten di data bulan-bulan berikutnya.</p>")
+    layak = []
+    if lab is not None:
+        o.append(setup_lab.lab_html(lab, th, td.replace("'padding", "'vertical-align:top;padding")).replace(
+            "<h3>Lab setup", "<h3>4. Lab setup"))
+        layak = lab.loc[lab["status"].str.startswith("LAYAK"), "id"].tolist()
+    o.append("</div>")
     subject = (f"Swing IDX — Review bulanan {BULAN[last.month - 1]} {last.year} — "
-               + ("USULAN ganti config" if adopt else "config tetap"))
+               + ("USULAN ganti config" if adopt else "config tetap")
+               + (f" — kandidat LAYAK: {', '.join(layak)}" if layak else ""))
     return "\n".join(o), subject
 
 

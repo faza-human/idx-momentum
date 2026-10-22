@@ -19,8 +19,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
 import pandas as pd
 
-from swing import (CFG, IS_END, Market, add_features, base_filter, load_raw, market_regime, plan_levels,
-                   round_tick, run_trades, setup_a, setup_b, tick_size, trade_stats)
+from swing import (CFG, IS_END, LOCK_DATE, Market, add_features, base_filter, load_raw, market_regime,
+                   plan_levels, round_tick, run_trades, setup_s_parts, tick_size, trade_stats, unique_trades)
 
 BLUE, GREEN, RED, GREY = "#1f3a5f", "#137333", "#c5221f", "#666"
 
@@ -58,6 +58,7 @@ def order_row(r, c=CFG):
     trig, sl, tp1, rpct = plan_levels(r["high"], r["ll5"] / r["adj"], r["atr14"] / r["adj"], c)
     lots, dana, risk = sizing(trig, sl, c)
     return dict(code=r["code"], close=float(r["close"]), ret=float(r["ret"]), rs=float(r["rs_pct"]),
+                variant=r.get("variant", ""), stoch=float(r["stoch_k"]),
                 trig=trig, limit=float(trig + 2 * tick_size(trig)),
                 cancel=float(round_tick(trig * (1 + c["max_gap"]), up=False)),
                 sl=sl, tp1=tp1, rpct=rpct, tppct=tp1 / trig - 1, lots=lots, dana=dana, risk=risk,
@@ -91,8 +92,9 @@ def build(data_dir, out_dir):
     mkt_dist = float(reg.loc[last, "mkt"] / reg.loc[last, "mkt_ma"] - 1)
 
     ready = df["ma200"].notna()
-    sig = setup_b(df) & ready & df["regime_on"]
-    sig_a = setup_a(df) & ready & df["regime_on"]
+    v1, v2 = setup_s_parts(df)
+    sig = (v1 | v2) & ready & df["regime_on"]
+    df["variant"] = np.where(v1 & v2, "v1+v2: pullback + Stoch", np.where(v1, "v1: B + Stoch<20", "v2: Stoch cross"))
 
     # order baru (sinyal hari terakhir)
     new = [order_row(r) for _, r in df[sig & (df["Date"] == last)].sort_values("rs_pct", ascending=False).iterrows()]
@@ -118,9 +120,9 @@ def build(data_dir, out_dir):
     watch = zone.sort_values("rs_pct", ascending=False).head(10)
     watch = [dict(code=w["code"], close=float(w["close"]), ma20=float(w["ma20"] / w["adj"]),
                   dist20=float(w["dist20"]), depth=float(w["depth"]), rs=float(w["rs_pct"]),
-                  high=float(w["high"])) for _, w in watch.iterrows()]
+                  high=float(w["high"]), stoch=float(w["stoch_k"])) for _, w in watch.iterrows()]
 
-    # paper trade: semua sinyal B (regime ON) 120 hari terakhir
+    # paper trade: semua sinyal Setup S (regime ON) 120 hari terakhir
     m = Market(df)
     recent_rows = np.flatnonzero((sig & (df["Date"] >= last - pd.Timedelta(days=120))).values)
     tr = paper_book(m, run_trades(m, recent_rows))
@@ -138,10 +140,14 @@ def build(data_dir, out_dir):
                 o["note"] = f"slot penuh ({CFG['max_pos']} posisi)"
             free -= 1
 
-    # rekam jejak backtest (sinyal B penuh)
-    allt = run_trades(m, np.flatnonzero(sig.values))
+    # rekam jejak Setup S: satu posisi per saham (kenaikan yang sama tidak dihitung dobel)
+    allt = unique_trades(m, run_trades(m, np.flatnonzero(sig.values)))
     st = {p: trade_stats(t) for p, t in (("IS", allt[allt["sig_date"] <= IS_END]),
-                                         ("OOS", allt[allt["sig_date"] > IS_END]))}
+                                         ("OOS", allt[(allt["sig_date"] > IS_END) & (allt["sig_date"] < LOCK_DATE)]),
+                                         ("LIVE", allt[allt["sig_date"] >= LOCK_DATE]))}
+    fin = allt[~allt["open_end"]]["r_mult"].sort_values()
+    st["ex_top3"] = round(float(fin.iloc[:-3].mean()), 2) if len(fin) > 5 else None
+    st["all_R"] = round(float(fin.mean()), 2) if len(fin) else None
     now = pd.Timestamp.now(tz="Asia/Jakarta").tz_localize(None)
     # data hari ini baru diharapkan setelah 17:00 WIB
     today = now.normalize() - pd.Timedelta(days=0 if now.hour >= 17 else 1)
@@ -158,7 +164,7 @@ def build(data_dir, out_dir):
                                 holidays=holidays))
     return dict(last=last, regime_on=regime_on, mkt_dist=mkt_dist, new=new, carry=carry, watch=watch,
                 open_pos=open_pos, closed=closed, st=st, df_last=df[df["Date"] == last].set_index("code"),
-                stale_days=stale, source=source, n_a=int((sig_a & (df["Date"] == last)).sum()))
+                stale_days=stale, source=source)
 
 
 # ---------------------------------------------------------------- HTML
@@ -170,7 +176,8 @@ def card(o, valid_to, label):
                 else "<i>Lot &lt; 1 dengan aturan risiko 1%</i>")
     return (f"<div style='border:1px solid #ddd;border-left:4px solid {BLUE};padding:8px 10px;margin:8px 0'>"
             f"<div style='font-size:15px'><b>{o['code']}</b> <span style='color:{GREY}'>{label} · close "
-            f"{fmt(o['close'])} ({o['ret']*100:+.1f}%) · RS {o['rs']*100:.0f}</span></div>"
+            f"{fmt(o['close'])} ({o['ret']*100:+.1f}%) · RS {o['rs']*100:.0f} · Stoch %K {o['stoch']:.0f}</span></div>"
+            f"<div style='color:{GREY};font-size:12px'>{o['variant']}</div>"
             f"<div>Auto order beli: harga ≥ <b>{fmt(o['trig'])}</b> → limit <b>{fmt(o['limit'])}</b> · "
             f"berlaku s/d {tgl(valid_to, True)}</div>"
             f"<div>Batalkan bila open &gt; <b>{fmt(o['cancel'])}</b> (gap &gt; 3%)</div>"
@@ -184,7 +191,7 @@ def html(r) -> str:
     last = r["last"]
     nb = next_bdays(last, 2)
     o = ["<div style='font-family:Arial,sans-serif;font-size:13px;color:#222;max-width:640px'>",
-         f"<h2 style='margin:0;color:{BLUE}'>Swing IDX — Setup Pullback</h2>",
+         f"<h2 style='margin:0;color:{BLUE}'>Swing IDX — Setup S (Pullback + Stochastic 5,3,3)</h2>",
          f"<div style='color:{GREY}'>Data EOD terakhir: <b>{tgl(last, True)}</b> · modal "
          f"{rp(c['capital'])} · risiko {c['risk_pct']*100:.0f}%/trade · maks {c['max_pos']} posisi</div>"]
     if r["stale_days"] > 2:
@@ -235,15 +242,17 @@ def html(r) -> str:
     o.append(f"<h3 style='margin-bottom:4px'>{next(sec)}. Watchlist: saham kuat mendekati zona pullback</h3>")
     if r["watch"]:
         o.append("<p style='color:#666;margin:0'>Belum ada sinyal. Uptrend, RS 30% teratas, sedang koreksi ke dekat MA20. "
-                 "Sinyal muncul bila ada candle hijau yang close di atas high kemarin. Jangan beli sebelum itu.</p>"
+                 "Sinyal muncul bila Stoch %K sempat &lt; 20 lalu (v1) candle hijau close di atas high kemarin, "
+                 "atau (v2) %K memotong %D ke atas. Jangan beli sebelum itu.</p>"
                  "<table style='border-collapse:collapse;font-size:12px'><tr style='background:#1f3a5f;color:#fff'>"
                  "<th style='padding:3px 6px'>Kode</th><th style='padding:3px 6px'>Close</th>"
                  "<th style='padding:3px 6px'>MA20</th><th style='padding:3px 6px'>Koreksi</th>"
-                 "<th style='padding:3px 6px'>RS</th></tr>")
+                 "<th style='padding:3px 6px'>RS</th><th style='padding:3px 6px'>Stoch %K</th></tr>")
         for w in r["watch"]:
             o.append(f"<tr><td style='padding:2px 6px'><b>{w['code']}</b></td><td style='padding:2px 6px'>{fmt(w['close'])}</td>"
                      f"<td style='padding:2px 6px'>{fmt(w['ma20'])} ({w['dist20']*100:+.1f}%)</td>"
-                     f"<td style='padding:2px 6px'>−{w['depth']*100:.1f}%</td><td style='padding:2px 6px'>{w['rs']*100:.0f}</td></tr>")
+                     f"<td style='padding:2px 6px'>−{w['depth']*100:.1f}%</td><td style='padding:2px 6px'>{w['rs']*100:.0f}</td>"
+                     f"<td style='padding:2px 6px'>{w['stoch']:.0f}</td></tr>")
         o.append("</table>")
     else:
         o.append("<p><i>Tidak ada saham kuat di zona pullback.</i></p>")
@@ -272,18 +281,24 @@ def html(r) -> str:
                      f"<td style='padding:2px 6px'>{t['r_mult']:+.2f}</td><td style='padding:2px 6px'>{t['reason']}</td></tr>")
         o.append("</table>")
 
-    si, so = r["st"]["IS"], r["st"]["OOS"]
-    o.append("<h3 style='margin-bottom:4px'>Rekam jejak backtest (net fee IPOT)</h3>"
-             f"<p style='margin:0'>Jul 2023–Jun 2025: {si['trades']} trade · win {si['win_rate']}% · "
-             f"rata-rata <b style='color:{RED}'>{si['avg_R']:+.2f}R</b><br>"
-             f"Jul 2025–sekarang: {so['trades']} trade · win {so['win_rate']}% · rata-rata "
-             f"<b style='color:{GREEN}'>{so['avg_R']:+.2f}R</b></p>"
-             "<p style='margin:4px 0'><i>Edge belum terbukti: rugi di periode pertama, untung di periode kedua. "
-             "Saham uptrend acak dengan exit sama juga menunjukkan pola serupa, jadi sebagian besar hasil "
-             "berasal dari kondisi pasar. Fase sekarang: PAPER TRADE.</i></p>")
-    o.append(f"<p style='color:#888;font-size:11px'>Setup A (breakout) tidak dikirim: negatif di backtest "
-             f"({r['n_a']} sinyal A hari ini). Data: github.com/faza-human/idx-momentum (sumber hari terakhir: {r['source']}). "
-             "Proxy IHSG = rata-rata return 100 saham terlikuid. Bukan rekomendasi investasi.</p></div>")
+    st = r["st"]
+
+    def line(label, x):
+        if x.get("trades", 0) < 2:
+            return f"{label}: {x.get('trades', 0)} trade selesai"
+        col = GREEN if x["avg_R"] > 0 else RED
+        return (f"{label}: {x['trades']} trade · win {x['win_rate']}% · rata-rata "
+                f"<b style='color:{col}'>{x['avg_R']:+.2f}R</b>")
+    o.append("<h3 style='margin-bottom:4px'>Rekam jejak Setup S (net fee IPOT, 1 posisi per saham)</h3>"
+             f"<p style='margin:0'>{line('Jul 2023–Jun 2025', st['IS'])}<br>"
+             f"{line('Jul 2025–22 Okt 2026', st['OOS'])}<br>"
+             f"<b>{line('Uji maju sejak dikunci 23 Okt 2026', st['LIVE'])}</b></p>"
+             f"<p style='margin:4px 0'><i>Seluruh periode {st['all_R']:+.2f}R per trade, tetapi tanpa 3 trade "
+             f"terbaik {st['ex_top3']:+.2f}R: hasil bergantung pada sedikit kenaikan besar dan pada pasar yang "
+             "sedang tren (2024 rugi, 2025 untung). Fase sekarang: PAPER TRADE. Penilaian hanya dari baris "
+             "uji maju.</i></p>")
+    o.append(f"<p style='color:#888;font-size:11px'>Data: github.com/faza-human/idx-momentum (sumber hari terakhir: "
+             f"{r['source']}). Proxy IHSG = rata-rata return 100 saham terlikuid. Bukan rekomendasi investasi.</p></div>")
     return "\n".join(o)
 
 

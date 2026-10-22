@@ -1,10 +1,35 @@
 # Swing Agent — IDX
 
+**Setup utama sejak 23 Okt 2026: Setup S** (gabungan dua varian Stochastic 5,3,3). Aturan dikunci per 23 Okt 2026;
+sinyal sesudah tanggal itu = uji maju murni. Email harian, posisi paper, dan rekam jejak memakai Setup S.
+
+## Setup S
+Filter dasar & pasar sama dengan Setup B (lihat bawah). Sinyal bila salah satu:
+- **v1**: Setup B (close > high kemarin, candle hijau, di zona pullback MA20) **dan** Stochastic %K(5,3,3) sempat < 20 dalam 3 hari.
+- **v2**: zona pullback MA20 (koreksi 3–15%, low 3 hari sentuh MA20 +2%) **dan** %K memotong %D ke atas hari ini **dan** %K sempat < 20 dalam 3 hari.
+Entry, SL, TP1, trailing, time stop, biaya: sama dengan Setup B.
+
+Historis (1 posisi per saham, Jul 2023–Okt 2026): 72 trade, win 35%, +0,76R/trade, median −1,16R,
+tanpa 3 trade terbaik −0,06R. Per tahun: 2023 +0,66 · 2024 −0,64 · 2025 +2,84 · 2026 −0,79 (5 trade).
+Portofolio Rp30 jt: +44,8%, drawdown maks −16,4% (B asli: −11,1% / −38,5%).
+Irisan v1 DAN v2 diuji dan ditolak: 19 trade, +0,05R, +0,9%.
+Catatan: hasil bergantung pada sedikit kenaikan besar (MLPT Sep 2025 +26R, WIIM Sep 2023, RMKE Nov 2025).
+
+## Lab setup (`lab.py`)
+Kandidat varian didaftarkan dengan tanggal sebelum dinilai; penilaian hanya dari uji maju (sinyal setelah tanggal daftar).
+Kandidat menggantikan S hanya bila uji maju ≥ 30 trade unik, R ≥ S + 0,10, dan tanpa 3 trade terbaik > 0.
+Terdaftar 23 Okt 2026: C1 S + pasar sedang tren · C2 breakout high 52 minggu + volume · C3 NR7 di zona pullback.
+Historis (info saja): C1 49 trade +1,41R (tanpa top3 +0,21, DD −10%) — ide C1 muncul dari analisis 2024 vs 2025,
+jadi angka historisnya bias; C2 +0,11R; C3 +0,06R.
+
+---
+
 Screener swing harian + email Gmail. Modal Rp30 jt, risiko 1%/trade, maks 5 posisi, maks 30% modal per posisi.
 
 ## File
 - `swing.py` — loader data (dengan perbaikan format kolom), indikator, Setup A & B, simulasi trade & portofolio, `CFG`.
 - `backtest.py` — `python -I backtest.py <data_dir> <out_dir>`: IS vs OOS, varian ketahanan, baseline acak.
+- `lab.py` — `python -I lab.py <data_dir> <out_dir>`: tabel kandidat setup (`lab.csv`, `lab.html`).
 - `screener.py` — `python -I screener.py <data_dir> <out_dir>`: `email.html`, `subject.txt`, `signals.json`.
 
 ## Data

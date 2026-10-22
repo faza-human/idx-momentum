@@ -52,7 +52,10 @@ CFG = dict(
     max_pos_frac=0.30,
 )
 
+CFG.update(stoch=(5, 3, 3), stoch_oversold=20)
+
 IS_END = pd.Timestamp("2025-06-30")
+LOCK_DATE = pd.Timestamp("2026-10-23")   # aturan Setup S dikunci; sinyal sesudah ini = uji maju murni
 
 
 def tick_size(p):
@@ -172,6 +175,17 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     df["volratio"] = df["volume"] / df["vol20"]
     df["is_ara"] = df["ret"] >= ara_limit(df["prev"]) - 0.01
 
+    # Stochastic 5,3,3 (harga adjusted): %K mentah 5 hari -> SMA3 = %K, SMA3 dari %K = %D
+    n, sk, sd = CFG["stoch"]
+    hh = g["a_high"].transform(lambda s: s.rolling(n).max())
+    ll = g["a_low"].transform(lambda s: s.rolling(n).min())
+    k_raw = 100 * (df["a_close"] - ll) / (hh - ll).replace(0, np.nan)
+    df["stoch_k"] = k_raw.groupby(df["code"]).transform(lambda s: s.rolling(sk).mean())
+    df["stoch_d"] = df.groupby("code")["stoch_k"].transform(lambda s: s.rolling(sd).mean())
+    gk = df.groupby("code", sort=False)
+    df["stoch_k_prev"], df["stoch_d_prev"] = gk["stoch_k"].shift(1), gk["stoch_d"].shift(1)
+    df["stoch_kmin3"] = gk["stoch_k"].transform(lambda s: s.rolling(3).min())
+
     # data lengkap: 200 baris terakhir saham ini mencakup <= 205 hari dataset
     df["cov_ok"] = (df["di"] - g["di"].shift(199)) <= 205
     liquid = ((df["value20"] >= CFG["min_value20"]) & (df["close"] >= CFG["min_price"])
@@ -221,6 +235,28 @@ def setup_b(df, c=CFG):
             & (df["a_close"] > df["prev_high"])                           # close tembus high kemarin
             & (df["a_close"] > df["a_open"])
             & (df["a_close"] >= df["ma20"]))
+
+
+def pullback_zone(df, c=CFG):
+    depth = 1 - df["ll3"] / df["hh15p"]
+    return ((df["ll3"] <= df["ma20_min3"] * (1 + c["b_touch_band"]))
+            & (depth >= c["b_pull_min"]) & (depth <= c["b_pull_max"]))
+
+
+def setup_s_parts(df, c=CFG):
+    """Setup S (utama sejak 23 Okt 2026) = gabungan dua varian Stochastic 5,3,3.
+    v1: Setup B + Stochastic %K sempat < 20 dalam 3 hari terakhir.
+    v2: zona pullback (sama dengan B) + %K memotong %D ke atas hari ini + %K sempat < 20 dalam 3 hari."""
+    oversold = df["stoch_kmin3"] < c["stoch_oversold"]
+    cross_up = (df["stoch_k"] > df["stoch_d"]) & (df["stoch_k_prev"] <= df["stoch_d_prev"])
+    v1 = setup_b(df, c) & oversold
+    v2 = base_filter(df, c) & pullback_zone(df, c) & cross_up & oversold
+    return v1, v2
+
+
+def setup_s(df, c=CFG):
+    v1, v2 = setup_s_parts(df, c)
+    return v1 | v2
 
 
 # ---------------------------------------------------------------- trade plan (dipakai backtest & screener)
@@ -348,6 +384,21 @@ def run_trades(m: Market, rows, c=CFG) -> pd.DataFrame:
     t["fill_di"] = m.di[t["fill_row"]]
     t["score"] = d["rs_pct"].values[t["sig_row"]]
     return t
+
+
+def unique_trades(m: Market, t: pd.DataFrame) -> pd.DataFrame:
+    """Satu posisi per saham: sinyal baru diabaikan selama trade sebelumnya di saham yang sama masih jalan.
+    Mencegah satu kenaikan yang sama terhitung berkali-kali."""
+    if len(t) == 0:
+        return t
+    t = t.sort_values(["fill_di", "score"], ascending=[True, False])
+    busy, keep = {}, []
+    for i, r in t.iterrows():
+        if busy.get(r["code"], -1) >= r["fill_di"]:
+            continue
+        busy[r["code"]] = np.inf if r["open_end"] else m.di[r["exit_row"]]
+        keep.append(i)
+    return t.loc[keep]
 
 
 # ---------------------------------------------------------------- portofolio
