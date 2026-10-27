@@ -120,3 +120,6 @@ Hasil (data diperbaiki, s/d 22 Okt 2026):
 ## Watchlist pra-setup (email harian)
 Saham lolos filter dasar (likuid, RS 30% teratas, Close > MA50 > MA200, MA50 naik) yang sedang koreksi
 3–15% dari high 15 hari dan berada −2% s/d +5% dari MA20. Maks 10, urut RS. Ini daftar pantau, bukan sinyal beli.
+
+## Catatan / backlog
+- (28 Okt 2026) Filter syariah: batasi sinyal screener swing & watchlist ke saham Daftar Efek Syariah (DES OJK, periode berlaku 1 Jun & 1 Des) untuk eksekusi via akun syariah (SOTS). Belum diimplementasikan — catatan saja.
