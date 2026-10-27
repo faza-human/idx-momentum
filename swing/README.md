@@ -15,6 +15,11 @@ Portofolio Rp30 jt: +44,8%, drawdown maks −16,4% (B asli: −11,1% / −38,5%)
 Irisan v1 DAN v2 diuji dan ditolak: 19 trade, +0,05R, +0,9%.
 Catatan: hasil bergantung pada sedikit kenaikan besar (MLPT Sep 2025 +26R, WIIM Sep 2023, RMKE Nov 2025).
 
+## Catatan syariah (email harian)
+Label [Syariah]/[Non-syariah] di kartu order, posisi, dan kolom watchlist berasal dari `data/des.csv`
+(Daftar Efek Syariah OJK periode I 2026, berlaku 1 Jun–30 Nov 2026). Hanya catatan, bukan filter.
+Email memberi peringatan bila DES lewat masa berlaku; perbarui file saat DES periode II (berlaku 1 Des 2026) terbit.
+
 ## Lab setup (`lab.py`)
 Kandidat varian didaftarkan dengan tanggal sebelum dinilai; penilaian hanya dari uji maju (sinyal setelah tanggal daftar).
 Kandidat menggantikan S hanya bila uji maju ≥ 30 trade unik, R ≥ S + 0,10, dan tanpa 3 trade terbaik > 0.

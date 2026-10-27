@@ -83,6 +83,7 @@ def paper_book(m, tr, c=CFG):
 
 
 def build(data_dir, out_dir):
+    load_des(data_dir)
     df = add_features(load_raw(data_dir, cache=f"{out_dir}/raw.pkl"))
     reg = market_regime(df)
     df["regime_on"] = df["Date"].map(reg["regime_on"]).fillna(False).astype(bool)
@@ -168,6 +169,25 @@ def build(data_dir, out_dir):
 
 
 # ---------------------------------------------------------------- HTML
+DES_VALID_UNTIL = pd.Timestamp("2026-11-30")   # DES periode I 2026; periode II berlaku 1 Des 2026
+DES = set()
+
+
+def load_des(data_dir):
+    """Daftar Efek Syariah (catatan saja, bukan filter). File: <repo>/data/des.csv."""
+    p = os.path.join(os.path.dirname(os.path.abspath(data_dir)), "des.csv")
+    if os.path.exists(p):
+        DES.update(pd.read_csv(p, comment="#")["code"].astype(str))
+    return bool(DES)
+
+
+def syariah_tag(code):
+    if not DES:
+        return ""
+    return (f" <span style='color:{GREEN};font-size:11px'>[Syariah]</span>" if code in DES
+            else f" <span style='color:{GREY};font-size:11px'>[Non-syariah]</span>")
+
+
 def card(o, valid_to, label):
     risk_note = (f"<div style='color:{RED}'><b>Lewati:</b> jarak SL {o['rpct']*100:.1f}% &gt; 8%.</div>"
                  if o["skip"] else
@@ -175,7 +195,7 @@ def card(o, valid_to, label):
     lot_note = (f"<b>{o['lots']} lot</b> · dana {rp(o['dana'])} · risiko {rp(o['risk'])}" if o["lots"] >= 1
                 else "<i>Lot &lt; 1 dengan aturan risiko 1%</i>")
     return (f"<div style='border:1px solid #ddd;border-left:4px solid {BLUE};padding:8px 10px;margin:8px 0'>"
-            f"<div style='font-size:15px'><b>{o['code']}</b> <span style='color:{GREY}'>{label} · close "
+            f"<div style='font-size:15px'><b>{o['code']}</b>{syariah_tag(o['code'])} <span style='color:{GREY}'>{label} · close "
             f"{fmt(o['close'])} ({o['ret']*100:+.1f}%) · RS {o['rs']*100:.0f} · Stoch %K {o['stoch']:.0f}</span></div>"
             f"<div style='color:{GREY};font-size:12px'>{o['variant']}</div>"
             f"<div>Auto order beli: harga ≥ <b>{fmt(o['trig'])}</b> → limit <b>{fmt(o['limit'])}</b> · "
@@ -232,7 +252,7 @@ def html(r) -> str:
             else:
                 act = (f"Tahan. SL sisa <b>{fmt(p['last_stop'])}</b> (sudah BEP)" if p["tp_hit"]
                        else f"Tahan. SL <b>{fmt(p['last_stop'])}</b> · TP1 <b>{fmt(p['tp1'])}</b>")
-            o.append(f"<div style='border-bottom:1px solid #eee;padding:4px 0'><b>{p['code']}</b> · masuk "
+            o.append(f"<div style='border-bottom:1px solid #eee;padding:4px 0'><b>{p['code']}</b>{syariah_tag(p['code'])} · masuk "
                      f"{pd.Timestamp(p['fill_date']):%d/%m} di {fmt(p['entry'])} · close {fmt(px)} "
                      f"(<span style='color:{GREEN if pnl >= 0 else RED}'>{pnl*100:+.1f}%</span>)"
                      f"{' · TP1 sudah kena' if p['tp_hit'] else ''}<br>{act}</div>")
@@ -247,12 +267,14 @@ def html(r) -> str:
                  "<table style='border-collapse:collapse;font-size:12px'><tr style='background:#1f3a5f;color:#fff'>"
                  "<th style='padding:3px 6px'>Kode</th><th style='padding:3px 6px'>Close</th>"
                  "<th style='padding:3px 6px'>MA20</th><th style='padding:3px 6px'>Koreksi</th>"
-                 "<th style='padding:3px 6px'>RS</th><th style='padding:3px 6px'>Stoch %K</th></tr>")
+                 "<th style='padding:3px 6px'>RS</th><th style='padding:3px 6px'>Stoch %K</th>"
+                 "<th style='padding:3px 6px'>Syariah</th></tr>")
         for w in r["watch"]:
             o.append(f"<tr><td style='padding:2px 6px'><b>{w['code']}</b></td><td style='padding:2px 6px'>{fmt(w['close'])}</td>"
                      f"<td style='padding:2px 6px'>{fmt(w['ma20'])} ({w['dist20']*100:+.1f}%)</td>"
                      f"<td style='padding:2px 6px'>−{w['depth']*100:.1f}%</td><td style='padding:2px 6px'>{w['rs']*100:.0f}</td>"
-                     f"<td style='padding:2px 6px'>{w['stoch']:.0f}</td></tr>")
+                     f"<td style='padding:2px 6px'>{w['stoch']:.0f}</td>"
+                     f"<td style='padding:2px 6px'>{('✓' if w['code'] in DES else '–') if DES else '?'}</td></tr>")
         o.append("</table>")
     else:
         o.append("<p><i>Tidak ada saham kuat di zona pullback.</i></p>")
@@ -298,7 +320,14 @@ def html(r) -> str:
              "sedang tren (2024 rugi, 2025 untung). Fase sekarang: PAPER TRADE. Penilaian hanya dari baris "
              "uji maju.</i></p>")
     o.append(f"<p style='color:#888;font-size:11px'>Data: github.com/faza-human/idx-momentum (sumber hari terakhir: "
-             f"{r['source']}). Proxy IHSG = rata-rata return 100 saham terlikuid. Bukan rekomendasi investasi.</p></div>")
+             f"{r['source']}). Proxy IHSG = rata-rata return 100 saham terlikuid. "
+             + ("Label syariah = Daftar Efek Syariah OJK periode I 2026 (catatan, bukan filter). "
+                if DES else "")
+             + "Bukan rekomendasi investasi.</p>"
+             + (f"<p style='background:#fff4ce;padding:6px;font-size:11px'>Daftar Efek Syariah sudah lewat masa "
+                f"berlaku ({DES_VALID_UNTIL:%d/%m/%Y}). Perbarui data/des.csv dengan DES periode terbaru.</p>"
+                if DES and r['last'] > DES_VALID_UNTIL else "")
+             + "</div>")
     return "\n".join(o)
 
 
