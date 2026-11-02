@@ -1022,6 +1022,18 @@
    ],
    "source": "imq21",
    "yahoo_match": 1.0
+  },
+  "2026-11-02": {
+   "active": 822,
+   "fail": [],
+   "fetched": "2026-11-03T03:22+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 1.0,
+   "rows": 949,
+   "skipped_sources": [
+    "idx: https://www.idx.co.id/primary/TradingSummary/GetStockSummary -> HTTP 403"
+   ],
+   "source": "imq21"
   }
  },
  "holidays": [
@@ -1311,6 +1323,17 @@
    "missing": [],
    "targets": [],
    "written": []
+  },
+  {
+   "at": "2026-11-03T03:22+07:00",
+   "holidays": [],
+   "missing": [],
+   "targets": [
+    "2026-11-02"
+   ],
+   "written": [
+    "2026-11-02 imq21"
+   ]
   }
  ]
 }
