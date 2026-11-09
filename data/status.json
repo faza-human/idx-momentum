@@ -1496,6 +1496,25 @@
    "missing": [],
    "targets": [],
    "written": []
+  },
+  {
+   "at": "2026-11-10T03:44+07:00",
+   "holidays": [],
+   "missing": [
+    {
+     "date": "2026-11-09",
+     "probable_holiday": false,
+     "tried": [
+      "idx: https://www.idx.co.id/primary/TradingSummary/GetStockSummary -> HTTP 403",
+      "imq21: https://imq21.com/daftar-saham -> Timeout: Failed to perform, curl: (28) Operation timed out after 25001 milliseconds with 0 bytes received. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.",
+      "yahoo: kosong"
+     ]
+    }
+   ],
+   "targets": [
+    "2026-11-09"
+   ],
+   "written": []
   }
  ]
 }
