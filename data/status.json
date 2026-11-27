@@ -1252,6 +1252,18 @@
     "idx: https://www.idx.co.id/primary/TradingSummary/GetStockSummary -> HTTP 403"
    ],
    "source": "imq21"
+  },
+  "2026-11-27": {
+   "active": 819,
+   "fail": [],
+   "fetched": "2026-11-28T02:28+07:00",
+   "ohlc_ok": 1.0,
+   "prev_match": 1.0,
+   "rows": 931,
+   "skipped_sources": [
+    "idx: https://www.idx.co.id/primary/TradingSummary/GetStockSummary -> HTTP 403"
+   ],
+   "source": "imq21"
   }
  },
  "holidays": [
@@ -1346,13 +1358,6 @@
   "2026-08-25"
  ],
  "runs": [
-  {
-   "at": "2026-10-31T00:02+07:00",
-   "holidays": [],
-   "missing": [],
-   "targets": [],
-   "written": []
-  },
   {
    "at": "2026-10-31T03:11+07:00",
    "holidays": [],
@@ -1853,6 +1858,17 @@
    "missing": [],
    "targets": [],
    "written": []
+  },
+  {
+   "at": "2026-11-28T02:28+07:00",
+   "holidays": [],
+   "missing": [],
+   "targets": [
+    "2026-11-27"
+   ],
+   "written": [
+    "2026-11-27 imq21"
+   ]
   }
  ]
 }
